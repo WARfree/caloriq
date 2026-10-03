@@ -1,42 +1,57 @@
-import { Home } from 'lucide-react-native';
+import { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useThemeColor } from 'heroui-native';
-import { useUniwind } from 'uniwind';
+import { ChartNoAxesColumn, Heart, SlidersHorizontal } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
+import { palette, useTracker } from '@/lib/tracker';
 
 export default function TabLayout() {
-  const { theme } = useUniwind();
-  const [background, foreground, border, accent, muted] = useThemeColor([
-    'background',
-    'foreground',
-    'border',
-    'accent',
-    'muted',
-  ]);
-
+  const load = useTracker((s) => s.load);
+  useEffect(() => {
+    void load();
+  }, [load]);
   return (
     <>
-      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
+      {/* eslint-disable-next-line react/style-prop-object -- Expo StatusBar accepts a string style, not a React Native style object. */}
+      <StatusBar style="dark" />
       <Tabs
-        screenOptions={{
-          headerStyle: { backgroundColor: background },
-          headerTintColor: foreground,
-          headerTitleStyle: { color: foreground },
-          headerShadowVisible: false,
-          sceneStyle: { backgroundColor: background },
-          tabBarStyle: {
-            backgroundColor: background,
-            borderTopColor: border,
+        screenListeners={({ navigation, route }) => ({
+          tabPress: () => {
+            if (navigation.getState().routes[navigation.getState().index].key !== route.key)
+              void Haptics.selectionAsync();
           },
-          tabBarActiveTintColor: accent,
-          tabBarInactiveTintColor: muted,
+        })}
+        screenOptions={{
+          headerShown: false,
+          sceneStyle: { backgroundColor: palette.background },
+          tabBarActiveTintColor: palette.accent,
+          tabBarInactiveTintColor: palette.muted,
+          tabBarStyle: {
+            backgroundColor: palette.white,
+            borderTopColor: palette.border,
+            height: 78,
+            paddingTop: 10,
+            paddingBottom: 16,
+          },
+          tabBarLabelStyle: { fontSize: 11, fontWeight: '500', marginTop: 4 },
         }}
       >
         <Tabs.Screen
           name="index"
+          options={{ title: 'Today', tabBarIcon: ({ color }) => <Heart size={23} color={color} /> }}
+        />
+        <Tabs.Screen
+          name="trends"
           options={{
-            title: 'Home',
-            tabBarIcon: ({ color, size }) => <Home color={color} size={size ?? 24} />,
+            title: 'Trends',
+            tabBarIcon: ({ color }) => <ChartNoAxesColumn size={23} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: 'Settings',
+            tabBarIcon: ({ color }) => <SlidersHorizontal size={23} color={color} />,
           }}
         />
       </Tabs>
