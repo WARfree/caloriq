@@ -13,7 +13,11 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 import { useEffect } from 'react';
 import * as DevClient from 'expo-dev-client';
-import { HeroUINativeProvider } from 'heroui-native';
+import { Button, HeroUINativeProvider, Skeleton, Typography } from 'heroui-native';
+import { View } from 'react-native';
+import { useAccount } from '@/lib/account';
+import { bilt } from '@/lib/bilt';
+import { useTracker } from '@/lib/tracker';
 import { Uniwind } from 'uniwind';
 import {
   ErrorBoundary as ExpoErrorBoundary,
@@ -51,6 +55,56 @@ patchExpoGoAssetUrls();
 Uniwind.setTheme('light');
 
 void SplashScreen.preventAutoHideAsync();
+
+function AccountNavigation() {
+  const { session, profile, ready, error, initialize } = useAccount();
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = bilt.auth.onAuthStateChange((_event, nextSession) => {
+      if (useAccount.getState().session?.user.id !== nextSession?.user.id) {
+        useTracker.setState({ ready: false, entries: [], goal: 2000, busy: false, error: null });
+      }
+      useAccount.getState().setSession(nextSession);
+    });
+    void initialize();
+    return () => subscription.unsubscribe();
+  }, [initialize]);
+  if (!ready)
+    return (
+      <View className="bg-background flex-1 justify-center gap-4 p-6">
+        {error ? (
+          <>
+            <Typography type="body" weight="normal" className="text-danger">
+              {error}
+            </Typography>
+            <Button onPress={() => void initialize()}>
+              <Button.Label>Încearcă din nou</Button.Label>
+            </Button>
+          </>
+        ) : (
+          <>
+            <Skeleton className="h-14 rounded-2xl" />
+            <Skeleton className="h-64 rounded-3xl" />
+          </>
+        )}
+      </View>
+    );
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Protected guard={!session}>
+        <Stack.Screen name="auth" />
+      </Stack.Protected>
+      <Stack.Protected guard={!!session && !profile}>
+        <Stack.Screen name="onboarding/[step]" />
+      </Stack.Protected>
+      <Stack.Protected guard={!!session && !!profile}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="log-food" />
+      </Stack.Protected>
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -145,10 +199,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <HeroUINativeProvider>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="log-food" options={{ headerShown: false }} />
-        </Stack>
+        <AccountNavigation />
         <InstallPrompt />
       </HeroUINativeProvider>
     </GestureHandlerRootView>

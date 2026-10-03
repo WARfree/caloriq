@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { create } from 'zustand';
+import { useAccount } from '@/lib/account';
+import { calculateCalories } from '@/lib/calorie-profile';
 
 export const palette = {
   accent: '#E94C5C',
@@ -44,10 +46,15 @@ export const useTracker = create<Tracker>((set) => ({
   error: null,
   clearError: () => set({ error: null }),
   load: async () => {
-    set({ error: null });
+    const { session, profile } = useAccount.getState();
+    if (!session || !profile) return;
+    const userId = session.user.id;
+    const initialGoal = calculateCalories(profile).calories;
+    set({ error: null, ready: false, entries: [], goal: initialGoal });
     try {
-      const raw = await AsyncStorage.getItem(key);
-      const data: Data = raw ? JSON.parse(raw) : { goal: 2000, entries: [] };
+      const raw = await AsyncStorage.getItem(`${key}:${userId}`);
+      const data: Data = raw ? JSON.parse(raw) : { goal: initialGoal, entries: [] };
+      if (useAccount.getState().session?.user.id !== userId) return;
       set({ ...data, ready: true });
     } catch {
       set({ error: 'Your food diary couldn’t be opened. Please try again.' });
@@ -55,9 +62,12 @@ export const useTracker = create<Tracker>((set) => ({
     }
   },
   save: async (data) => {
+    const userId = useAccount.getState().session?.user.id;
+    if (!userId) return false;
     set({ busy: true, error: null });
     try {
-      await AsyncStorage.setItem(key, JSON.stringify(data));
+      await AsyncStorage.setItem(`${key}:${userId}`, JSON.stringify(data));
+      if (useAccount.getState().session?.user.id !== userId) return false;
       set({ ...data, busy: false });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       return true;

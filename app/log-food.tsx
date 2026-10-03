@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react';
 import { View, FlatList, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { Button, Card, FieldError, Input, Label, PressableFeedback, TextField, Typography } from 'heroui-native';
+import {
+  Button,
+  Card,
+  FieldError,
+  Input,
+  Label,
+  PressableFeedback,
+  TextField,
+  Typography,
+} from 'heroui-native';
 import {
   ChevronLeft,
   ChevronRight,
@@ -228,10 +237,16 @@ export default function LogFood() {
                         <Utensils size={18} color={palette.accent} />
                       </View>
                       <View className="min-w-0 flex-1 shrink">
-                        <Typography type="body-sm" weight="semibold" numberOfLines={2}>{item.name}</Typography>
-                        <Typography type="body-xs" weight="normal" color="muted" className="mt-1">{item.serving}</Typography>
+                        <Typography type="body-sm" weight="semibold" numberOfLines={2}>
+                          {item.name}
+                        </Typography>
+                        <Typography type="body-xs" weight="normal" color="muted" className="mt-1">
+                          {item.serving}
+                        </Typography>
                       </View>
-                      <Typography type="body-sm" weight="medium" className="shrink-0">{item.calories}</Typography>
+                      <Typography type="body-sm" weight="medium" className="shrink-0">
+                        {item.calories}
+                      </Typography>
                       <ChevronRight size={16} color={palette.muted} />
                     </Card>
                   </PressableFeedback>
@@ -276,7 +291,9 @@ export default function LogFood() {
                       {selected.serving}
                     </Typography>
                     <View className="mt-6 flex-row items-center justify-between">
-                      <Typography type="body-sm" weight="medium">Servings</Typography>
+                      <Typography type="body-sm" weight="medium">
+                        Servings
+                      </Typography>
                       <View className="flex-row items-center gap-4">
                         <Button
                           isIconOnly
@@ -291,7 +308,9 @@ export default function LogFood() {
                         >
                           <Minus size={18} color={palette.accent} />
                         </Button>
-                        <Typography type="body" weight="semibold">{quantity}</Typography>
+                        <Typography type="body" weight="semibold">
+                          {quantity}
+                        </Typography>
                         <Button
                           isIconOnly
                           size="sm"
@@ -371,7 +390,16 @@ export default function LogFood() {
                   </Card>
                 )}
                 {!!validation && <FieldError className="mt-3">{validation}</FieldError>}
-                {!!error && <Typography type="body-sm" weight="normal" style={{ color: palette.accent }} className="mt-3">{error}</Typography>}
+                {!!error && (
+                  <Typography
+                    type="body-sm"
+                    weight="normal"
+                    style={{ color: palette.accent }}
+                    className="mt-3"
+                  >
+                    {error}
+                  </Typography>
+                )}
                 {existing && (
                   <View className="mt-5">
                     {confirmDelete ? (

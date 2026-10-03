@@ -33,7 +33,12 @@ export function Screen({ children }: { children: ReactNode }) {
 export function Heading({ title, action }: { title: string; action?: ReactNode }) {
   return (
     <View className="mb-6 flex-row items-center justify-between">
-      <Typography.Heading type="h2" weight="bold" style={{ fontSize: 32, lineHeight: 40 }} className="tracking-tight">
+      <Typography.Heading
+        type="h2"
+        weight="bold"
+        style={{ fontSize: 32, lineHeight: 40 }}
+        className="tracking-tight"
+      >
         {title}
       </Typography.Heading>
       {action}
@@ -71,7 +76,9 @@ export function LoadState() {
     return (
       <View className="items-center gap-4 py-16">
         <AlertCircle color={palette.accent} />
-        <Typography type="body" weight="normal" align="center" style={{ color: palette.accent }}>{error}</Typography>
+        <Typography type="body" weight="normal" align="center" style={{ color: palette.accent }}>
+          {error}
+        </Typography>
         <Button onPress={() => void load()}>
           <Button.Label>Try again</Button.Label>
         </Button>
@@ -111,7 +118,12 @@ export function Ring({ value, goal }: { value: number; goal: number }) {
           origin="105, 105"
         />
       </Svg>
-      <Typography type="h1" weight="bold" style={{ fontSize: 43, lineHeight: 52 }} className="tracking-tight">
+      <Typography
+        type="h1"
+        weight="bold"
+        style={{ fontSize: 43, lineHeight: 52 }}
+        className="tracking-tight"
+      >
         {Math.abs(goal - value).toLocaleString()}
       </Typography>
       <Typography type="body-sm" weight="normal" color="muted">

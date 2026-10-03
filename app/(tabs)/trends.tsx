@@ -63,13 +63,20 @@ export default function Trends() {
           <Card className="mb-4 rounded-[28px] p-5">
             <View className="mb-4 flex-row items-center gap-2">
               <ChartNoAxesColumn size={19} color={palette.accent} />
-              <Typography type="body" weight="semibold">Weekly calories</Typography>
+              <Typography type="body" weight="semibold">
+                Weekly calories
+              </Typography>
             </View>
             <Typography type="h1" weight="bold" className="tracking-tight">
               {average.toLocaleString()}
-              <Typography type="body-sm" weight="normal" color="muted"> kcal</Typography>
+              <Typography type="body-sm" weight="normal" color="muted">
+                {' '}
+                kcal
+              </Typography>
             </Typography>
-            <Typography type="body-xs" weight="normal" color="muted" className="mt-1">Average per logged day</Typography>
+            <Typography type="body-xs" weight="normal" color="muted" className="mt-1">
+              Average per logged day
+            </Typography>
             <View className="mt-7 mb-2">
               <View className="mb-3 flex-row items-center justify-between">
                 <Typography type="body-xs" weight="normal" color="muted">
@@ -126,10 +133,14 @@ export default function Trends() {
               <Typography type="body-xs" weight="normal" color="muted">
                 Total calories
               </Typography>
-              <Typography type="h3" weight="bold" className="mt-2">{sum.toLocaleString()}</Typography>
+              <Typography type="h3" weight="bold" className="mt-2">
+                {sum.toLocaleString()}
+              </Typography>
             </Card>
           </View>
-          <Typography.Heading type="h4" weight="bold" className="mb-3">This week</Typography.Heading>
+          <Typography.Heading type="h4" weight="bold" className="mb-3">
+            This week
+          </Typography.Heading>
           <Card className="rounded-3xl p-0">
             {loggedDays.length === 0 ? (
               <Empty

@@ -50,7 +50,9 @@ export default function Today() {
     <Screen>
       <View className="mb-3 flex-row items-center gap-1.5">
         <Heart size={16} color={palette.accent} fill={palette.accent} />
-        <Typography type="body-sm" weight="semibold" style={{ color: palette.accent }}>nourish</Typography>
+        <Typography type="body-sm" weight="semibold" style={{ color: palette.accent }}>
+          nourish
+        </Typography>
       </View>
       <Heading
         title={
@@ -114,7 +116,11 @@ export default function Today() {
                 type="body-xs"
                 weight="normal"
                 color={active ? 'default' : 'muted'}
-                style={{ fontSize: 11, lineHeight: 16, ...(active ? { color: palette.white } : {}) }}
+                style={{
+                  fontSize: 11,
+                  lineHeight: 16,
+                  ...(active ? { color: palette.white } : {}),
+                }}
               >
                 {day.toLocaleDateString('en', { weekday: 'short' }).slice(0, 1)}
               </Typography>
@@ -141,7 +147,9 @@ export default function Today() {
               <View className="bg-peach h-8 w-8 items-center justify-center rounded-xl">
                 <Flame size={18} color={palette.accent} />
               </View>
-              <Typography type="body" weight="semibold">Daily calories</Typography>
+              <Typography type="body" weight="semibold">
+                Daily calories
+              </Typography>
             </View>
             <View className="items-center py-3">
               <Ring value={total.calories} goal={goal} />
@@ -157,7 +165,9 @@ export default function Today() {
               </View>
               <View className="bg-border w-px" />
               <View className="flex-1 items-center">
-                <Typography type="h4" weight="semibold">{goal.toLocaleString()}</Typography>
+                <Typography type="h4" weight="semibold">
+                  {goal.toLocaleString()}
+                </Typography>
                 <Typography type="body-xs" weight="normal" color="muted" className="mt-1">
                   Daily goal
                 </Typography>
@@ -171,7 +181,9 @@ export default function Today() {
                 const color = [palette.protein, palette.carbs, palette.fat][i];
                 return (
                   <View key={label} className="flex-1 gap-2">
-                    <Typography type="body-xs" weight="medium">{label}</Typography>
+                    <Typography type="body-xs" weight="medium">
+                      {label}
+                    </Typography>
                     <View className="bg-background h-1.5 overflow-hidden rounded-full">
                       <View
                         style={{
@@ -182,8 +194,13 @@ export default function Today() {
                       />
                     </View>
                     <Typography type="body-xs" weight="normal">
-                      <Typography type="body-xs" weight="semibold">{Math.round(value)}g</Typography>
-                      <Typography type="body-xs" weight="normal" color="muted"> / {macroGoals[i]}g</Typography>
+                      <Typography type="body-xs" weight="semibold">
+                        {Math.round(value)}g
+                      </Typography>
+                      <Typography type="body-xs" weight="normal" color="muted">
+                        {' '}
+                        / {macroGoals[i]}g
+                      </Typography>
                     </Typography>
                   </View>
                 );
@@ -191,7 +208,9 @@ export default function Today() {
             </View>
           </Card>
           <View className="mb-3 flex-row items-center justify-between">
-            <Typography.Heading type="h4" weight="bold">Food diary</Typography.Heading>
+            <Typography.Heading type="h4" weight="bold">
+              Food diary
+            </Typography.Heading>
             <Typography type="body-xs" weight="normal" color="muted">
               {dayEntries.length} {dayEntries.length === 1 ? 'entry' : 'entries'}
             </Typography>
@@ -207,7 +226,9 @@ export default function Today() {
                       <Icon size={20} color={palette.muted} />
                     </View>
                     <View className="flex-1">
-                      <Typography type="body-sm" weight="semibold">{meal}</Typography>
+                      <Typography type="body-sm" weight="semibold">
+                        {meal}
+                      </Typography>
                       <Typography type="body-xs" weight="normal" color="muted" className="mt-1">
                         {list.length ? `${totals(list).calories} kcal` : 'Nothing logged yet'}
                       </Typography>
@@ -240,12 +261,16 @@ export default function Today() {
                         className="ml-13 flex-row items-center gap-3 pt-3"
                       >
                         <View className="flex-1">
-                          <Typography type="body-sm" weight="normal">{entry.name}</Typography>
+                          <Typography type="body-sm" weight="normal">
+                            {entry.name}
+                          </Typography>
                           <Typography type="body-xs" weight="normal" color="muted">
                             {entry.serving}
                           </Typography>
                         </View>
-                        <Typography type="body-sm" weight="medium">{entry.calories}</Typography>
+                        <Typography type="body-sm" weight="medium">
+                          {entry.calories}
+                        </Typography>
                         <ChevronRight size={14} color={palette.muted} />
                       </Pressable>
                     </Animated.View>
