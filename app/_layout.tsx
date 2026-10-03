@@ -18,6 +18,7 @@ import { View } from 'react-native';
 import { useAccount } from '@/lib/account';
 import { bilt } from '@/lib/bilt';
 import { useTracker } from '@/lib/tracker';
+import { resetActivities } from '@/lib/activities';
 import { Uniwind } from 'uniwind';
 import {
   ErrorBoundary as ExpoErrorBoundary,
@@ -64,6 +65,7 @@ function AccountNavigation() {
     } = bilt.auth.onAuthStateChange((_event, nextSession) => {
       if (useAccount.getState().session?.user.id !== nextSession?.user.id) {
         useTracker.setState({ ready: false, entries: [], goal: 2000, busy: false, error: null });
+        resetActivities();
       }
       useAccount.getState().setSession(nextSession);
     });
@@ -101,6 +103,7 @@ function AccountNavigation() {
       <Stack.Protected guard={!!session && !!profile}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="log-food" />
+        <Stack.Screen name="log-activity" />
       </Stack.Protected>
     </Stack>
   );
