@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { View, FlatList, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View, FlatList, KeyboardAvoidingView, Linking, Platform, ScrollView } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import {
   Button,
@@ -8,6 +8,8 @@ import {
   Input,
   Label,
   PressableFeedback,
+  Skeleton,
+  Spinner,
   TextField,
   Typography,
 } from 'heroui-native';
@@ -20,7 +22,10 @@ import {
   Utensils,
   X,
   Trash2,
+  ScanBarcode,
 } from 'lucide-react-native';
+import BarcodeScanner from '@/components/BarcodeScanner';
+import { getOpenFoodFacts, type CatalogFood } from '@/lib/open-food-facts';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from '@/components/ui/primitives/SafeAreaView';
 import { Empty, LoadState } from '@/components/TrackerUI';
@@ -31,7 +36,6 @@ import {
   meals,
   palette,
   useTracker,
-  type Food,
   type Meal,
   type Nutrition,
 } from '@/lib/tracker';
@@ -44,7 +48,29 @@ export default function LogFood() {
   const existing = entries.find((e) => e.id === params.id);
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState(!!existing);
-  const [selected, setSelected] = useState<Food | null>(null);
+  const [selected, setSelected] = useState<CatalogFood | null>(null);
+  const [scanMode, setScanMode] = useState<'camera' | 'manual' | null>(null);
+  const [barcode, setBarcode] = useState('');
+  const [results, setResults] = useState<CatalogFood[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [searched, setSearched] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextPage, setNextPage] = useState(2);
+  const [lastRequest, setLastRequest] = useState<{
+    action: 'search' | 'barcode';
+    query: string;
+    page: number;
+  } | null>(null);
+  const [nutritionNotice, setNutritionNotice] = useState('');
+  const [amount, setAmount] = useState('100');
+  const requestId = useRef(0);
+  useEffect(
+    () => () => {
+      requestId.current += 1;
+    },
+    [],
+  );
   const [meal, setMeal] = useState<Meal>(
     existing?.meal ?? meals.find((m) => m === params.meal) ?? 'Breakfast',
   );
@@ -78,18 +104,94 @@ export default function LogFood() {
       setEditing(true);
     }
   }
-  const choose = (food: Food) => {
-    setSelected(food);
+  const choose = (food: CatalogFood) => {
+    const incomplete = !!food.missingNutrition?.length;
+    setSelected(incomplete ? null : food);
     setName(food.name);
     setServing(food.serving);
     setQuantity(1);
+    setAmount('100');
+    setNutritionNotice(
+      incomplete
+        ? 'Open Food Facts nu are toate valorile nutritive. Completează câmpurile lipsă pentru 100 g/ml înainte de adăugare.'
+        : '',
+    );
+    if (incomplete)
+      setNumbers({
+        calories: food.missingNutrition?.includes('calories') ? '' : String(food.calories),
+        protein: food.missingNutrition?.includes('protein') ? '' : String(food.protein),
+        carbs: food.missingNutrition?.includes('carbs') ? '' : String(food.carbs),
+        fat: food.missingNutrition?.includes('fat') ? '' : String(food.fat),
+      });
+    setScanMode(null);
     setValidation('');
     setEditing(true);
     clearError();
   };
+  const resetSearch = () => {
+    requestId.current += 1;
+    setQuery('');
+    setResults([]);
+    setSearched(false);
+    setSearching(false);
+    setSearchError('');
+    setLastRequest(null);
+    setHasMore(false);
+  };
+  const lookup = async (action: 'search' | 'barcode', text: string, page = 1) => {
+    const value = text.trim();
+    if (action === 'barcode' ? !/^\d{8,14}$/.test(value) : value.length < 2) {
+      setSearchError(
+        action === 'barcode'
+          ? 'Introdu un cod de bare cu 8–14 cifre.'
+          : 'Scrie cel puțin două caractere.',
+      );
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+    const currentRequest = ++requestId.current;
+    setScanMode(null);
+    setSearching(true);
+    setSearchError('');
+    setSearched(true);
+    setLastRequest({ action, query: value, page });
+    if (page === 1) {
+      setResults([]);
+      setHasMore(false);
+    }
+    try {
+      const response = await getOpenFoodFacts(action, value, page);
+      if (currentRequest !== requestId.current) return;
+      setResults((previous) =>
+        page === 1
+          ? response.products
+          : [
+              ...previous,
+              ...response.products.filter((food) => !previous.some((item) => item.id === food.id)),
+            ],
+      );
+      setHasMore(response.hasMore);
+      setNextPage(response.page + 1);
+      if (action === 'barcode' && response.products[0]) choose(response.products[0]);
+    } catch (cause) {
+      if (currentRequest !== requestId.current) return;
+      setSearchError(
+        cause instanceof Error
+          ? cause.message
+          : 'Nu am putut încărca alimentele. Încearcă din nou.',
+      );
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      if (currentRequest === requestId.current) setSearching(false);
+    }
+  };
   const custom = () => {
+    requestId.current += 1;
+    setSearching(false);
+    setScanMode(null);
+    setNutritionNotice('');
     setSelected(null);
-    setName(query);
+    setName(lastRequest?.action === 'barcode' ? '' : query);
     setServing('1 serving');
     setQuantity(1);
     setNumbers({ calories: '', protein: '', carbs: '', fat: '' });
@@ -97,13 +199,15 @@ export default function LogFood() {
     setEditing(true);
     clearError();
   };
+  const portion =
+    selected?.source === 'open-food-facts' ? Number(amount.replace(',', '.')) / 100 : quantity;
   const submit = async () => {
     const nutrition: Nutrition = selected
       ? {
-          calories: Math.round(selected.calories * quantity),
-          protein: Math.round(selected.protein * quantity),
-          carbs: Math.round(selected.carbs * quantity),
-          fat: Math.round(selected.fat * quantity),
+          calories: Math.round(selected.calories * portion),
+          protein: Math.round(selected.protein * portion * 10) / 10,
+          carbs: Math.round(selected.carbs * portion * 10) / 10,
+          fat: Math.round(selected.fat * portion * 10) / 10,
         }
       : {
           calories: Number(numbers.calories),
@@ -115,7 +219,9 @@ export default function LogFood() {
       !name.trim() ||
       !serving.trim() ||
       (!selected && !numbers.calories.trim()) ||
-      nutrition.calories <= 0 ||
+      (!!nutritionNotice && Object.values(numbers).some((value) => !value.trim())) ||
+      (selected && (!Number.isFinite(portion) || portion <= 0 || portion > 100)) ||
+      nutrition.calories < 0 ||
       nutrition.calories > 10000 ||
       Object.values(nutrition).some((n) => !Number.isFinite(n) || n < 0 || n > 10000)
     ) {
@@ -128,7 +234,12 @@ export default function LogFood() {
     const entry = {
       id: existing?.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name: name.trim(),
-      serving: selected ? `${quantity} × ${serving}` : serving.trim(),
+      serving:
+        selected?.source === 'open-food-facts'
+          ? `${Number(amount.replace(',', '.'))} ${selected.serving.endsWith('ml') ? 'ml' : 'g'}`
+          : selected
+            ? `${quantity} × ${serving}`
+            : serving.trim(),
       meal,
       date: params.date ?? dateKey(),
       ...nutrition,
@@ -142,9 +253,13 @@ export default function LogFood() {
     if (existing && (await save({ goal, entries: entries.filter((e) => e.id !== existing.id) })))
       back();
   };
-  const list = foods.filter((f) =>
-    `${f.name} ${f.category}`.toLowerCase().includes(query.toLowerCase()),
-  );
+  const list: CatalogFood[] = searched ? results : foods;
+  const openSource = () => {
+    void Linking.openURL('https://world.openfoodfacts.org/terms-of-use').catch(() => {
+      setSearchError('Nu am putut deschide informațiile despre Open Food Facts.');
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    });
+  };
   return (
     <SafeAreaView edges={['top', 'bottom']} className="bg-background flex-1">
       <Stack.Screen options={{ headerShown: false }} />
@@ -160,7 +275,10 @@ export default function LogFood() {
               size="sm"
               accessibilityLabel="Back"
               onPress={() => {
-                if (editing && !existing) {
+                if (scanMode) {
+                  setScanMode(null);
+                  setSearchError('');
+                } else if (editing && !existing) {
                   setEditing(false);
                   setValidation('');
                   clearError();
@@ -180,37 +298,103 @@ export default function LogFood() {
             <View className="px-5">
               <LoadState />
             </View>
+          ) : scanMode ? (
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
+            >
+              {scanMode === 'camera' ? (
+                <BarcodeScanner
+                  onScan={(code) => {
+                    setBarcode(code);
+                    void lookup('barcode', code);
+                  }}
+                  onManual={() => setScanMode('manual')}
+                />
+              ) : (
+                <Card className="gap-4 rounded-3xl p-5">
+                  <TextField isInvalid={!!searchError}>
+                    <Label>Cod de bare</Label>
+                    <Input
+                      value={barcode}
+                      onChangeText={(value) => {
+                        setBarcode(value.replace(/\D/g, ''));
+                        setSearchError('');
+                      }}
+                      keyboardType="number-pad"
+                      maxLength={14}
+                      placeholder="8–14 cifre"
+                      returnKeyType="search"
+                      onSubmitEditing={() => void lookup('barcode', barcode)}
+                    />
+                    {!!searchError && <FieldError>{searchError}</FieldError>}
+                  </TextField>
+                  <Button isDisabled={searching} onPress={() => void lookup('barcode', barcode)}>
+                    <Button.Label>Caută produsul</Button.Label>
+                  </Button>
+                </Card>
+              )}
+            </ScrollView>
           ) : !editing ? (
             <>
-              <View className="mb-4 px-5">
+              <View className="mb-4 gap-3 px-5">
                 <View className="bg-surface flex-row items-center rounded-2xl px-3">
                   <Search size={19} color={palette.muted} />
                   <Input
                     value={query}
                     onChangeText={setQuery}
-                    placeholder="Search foods"
+                    placeholder="Caută în Open Food Facts"
+                    returnKeyType="search"
+                    onSubmitEditing={() => {
+                      if (!searching) void lookup('search', query);
+                    }}
+                    maxLength={100}
                     className="flex-1 border-0 bg-transparent"
-                    accessibilityLabel="Search foods"
+                    accessibilityLabel="Caută alimente"
                   />
-                  {!!query && (
+                  {(!!query || searched) && (
                     <Button
                       isIconOnly
                       variant="ghost"
                       size="sm"
-                      accessibilityLabel="Clear search"
-                      onPress={() => setQuery('')}
+                      accessibilityLabel="Șterge căutarea"
+                      onPress={resetSearch}
                     >
                       <X size={16} color={palette.muted} />
                     </Button>
                   )}
                 </View>
+                <View className="flex-row gap-2">
+                  <Button
+                    className="flex-1 rounded-2xl"
+                    isDisabled={searching || query.trim().length < 2}
+                    onPress={() => void lookup('search', query)}
+                  >
+                    {searching && <Spinner size="sm" color={palette.white} />}
+                    <Button.Label numberOfLines={1}>
+                      {searching ? 'Se caută…' : 'Caută'}
+                    </Button.Label>
+                  </Button>
+                  <Button
+                    className="flex-1 rounded-2xl"
+                    variant="secondary"
+                    isDisabled={searching}
+                    onPress={() => {
+                      setSearchError('');
+                      setScanMode('camera');
+                    }}
+                  >
+                    <ScanBarcode size={18} color={palette.accent} />
+                    <Button.Label numberOfLines={1}>Scanează</Button.Label>
+                  </Button>
+                </View>
               </View>
               <View className="mb-3 flex-row flex-wrap items-center justify-between gap-x-3 gap-y-1 px-5">
                 <Typography type="body" weight="semibold">
-                  {query ? 'Search results' : 'Everyday foods'}
+                  {searched ? 'Open Food Facts' : 'Everyday foods'}
                 </Typography>
                 <Typography type="body-xs" weight="normal" color="muted">
-                  Estimates per serving
+                  {searched ? 'Valori per 100 g/ml' : 'Estimates per serving'}
                 </Typography>
               </View>
               <FlatList
@@ -218,12 +402,60 @@ export default function LogFood() {
                 keyExtractor={(f) => f.id}
                 contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
                 keyboardShouldPersistTaps="handled"
+                ListHeaderComponent={
+                  searchError ? (
+                    <View className="mb-4 items-center gap-3">
+                      <Typography align="center" className="text-danger">
+                        {searchError}
+                      </Typography>
+                      {lastRequest && (
+                        <Button
+                          variant="secondary"
+                          isDisabled={searching}
+                          onPress={() =>
+                            void lookup(lastRequest.action, lastRequest.query, lastRequest.page)
+                          }
+                        >
+                          <Button.Label>Încearcă din nou</Button.Label>
+                        </Button>
+                      )}
+                    </View>
+                  ) : null
+                }
                 ListEmptyComponent={
-                  <Empty
-                    text="No matching foods"
-                    action="Clear search"
-                    onPress={() => setQuery('')}
-                  />
+                  searching ? (
+                    <View className="gap-2">
+                      {[0, 1, 2, 3].map((key) => (
+                        <Skeleton key={key} className="h-20 rounded-2xl" />
+                      ))}
+                    </View>
+                  ) : searchError ? null : (
+                    <Empty
+                      text={
+                        lastRequest?.action === 'barcode'
+                          ? 'Codul nu a fost găsit în Open Food Facts'
+                          : 'Niciun aliment găsit'
+                      }
+                      action={
+                        lastRequest?.action === 'barcode' ? 'Adaugă manual' : 'Șterge căutarea'
+                      }
+                      onPress={lastRequest?.action === 'barcode' ? custom : resetSearch}
+                    />
+                  )
+                }
+                ListFooterComponent={
+                  hasMore && lastRequest?.action === 'search' ? (
+                    <Button
+                      className="mt-3"
+                      variant="secondary"
+                      isDisabled={searching}
+                      onPress={() => void lookup('search', lastRequest.query, nextPage)}
+                    >
+                      <Button.Label>
+                        {searching ? 'Se încarcă…' : 'Mai multe rezultate'}
+                      </Button.Label>
+                    </Button>
+                  ) : null
                 }
                 renderItem={({ item }) => (
                   <PressableFeedback
@@ -240,19 +472,37 @@ export default function LogFood() {
                         <Typography type="body-sm" weight="semibold" numberOfLines={2}>
                           {item.name}
                         </Typography>
-                        <Typography type="body-xs" weight="normal" color="muted" className="mt-1">
-                          {item.serving}
+                        <Typography
+                          type="body-xs"
+                          weight="normal"
+                          color="muted"
+                          className="mt-1"
+                          numberOfLines={1}
+                        >
+                          {item.source ? `${item.category} · ${item.serving}` : item.serving}
                         </Typography>
+                        {!!item.missingNutrition?.length && (
+                          <Typography type="body-xs" color="muted">
+                            Valori incomplete
+                          </Typography>
+                        )}
                       </View>
                       <Typography type="body-sm" weight="medium" className="shrink-0">
-                        {item.calories}
+                        {item.missingNutrition?.includes('calories')
+                          ? '—'
+                          : Math.round(item.calories)}
                       </Typography>
                       <ChevronRight size={16} color={palette.muted} />
                     </Card>
                   </PressableFeedback>
                 )}
               />
-              <View className="border-border border-t px-5 py-4">
+              <View className="border-border gap-1 border-t px-5 py-3">
+                <Button variant="ghost" size="sm" onPress={openSource}>
+                  <Button.Label className="text-muted" numberOfLines={1}>
+                    Open Food Facts · ODbL
+                  </Button.Label>
+                </Button>
                 <Button variant="secondary" className="rounded-2xl" onPress={custom}>
                   <Plus color={palette.accent} size={20} />
                   <Button.Label>Add custom food</Button.Label>
@@ -290,45 +540,66 @@ export default function LogFood() {
                     <Typography type="body-sm" weight="normal" color="muted" className="mt-1">
                       {selected.serving}
                     </Typography>
-                    <View className="mt-6 flex-row items-center justify-between">
-                      <Typography type="body-sm" weight="medium">
-                        Servings
-                      </Typography>
-                      <View className="flex-row items-center gap-4">
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="secondary"
-                          accessibilityLabel="Fewer servings"
-                          isDisabled={quantity <= 0.5}
-                          onPress={() => {
-                            setQuantity(quantity - 0.5);
-                            void Haptics.selectionAsync();
-                          }}
-                        >
-                          <Minus size={18} color={palette.accent} />
-                        </Button>
-                        <Typography type="body" weight="semibold">
-                          {quantity}
+                    {selected.source === 'open-food-facts' ? (
+                      <View className="mt-5 gap-3">
+                        <TextField>
+                          <Label> Cantitate ({selected.serving.endsWith('ml') ? 'ml' : 'g'})</Label>
+                          <Input
+                            value={amount}
+                            onChangeText={(value) => {
+                              setAmount(value);
+                              setValidation('');
+                            }}
+                            keyboardType="decimal-pad"
+                            maxLength={7}
+                            accessibilityLabel="Cantitate consumată"
+                          />
+                        </TextField>
+                        <Typography type="body-xs" color="muted">
+                          Verifică valorile cu eticheta produsului.
                         </Typography>
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="secondary"
-                          accessibilityLabel="More servings"
-                          isDisabled={quantity >= 20}
-                          onPress={() => {
-                            setQuantity(quantity + 0.5);
-                            void Haptics.selectionAsync();
-                          }}
-                        >
-                          <Plus size={18} color={palette.accent} />
-                        </Button>
                       </View>
-                    </View>
+                    ) : (
+                      <View className="mt-6 flex-row items-center justify-between">
+                        <Typography type="body-sm" weight="medium">
+                          Servings
+                        </Typography>
+                        <View className="flex-row items-center gap-4">
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="secondary"
+                            accessibilityLabel="Fewer servings"
+                            isDisabled={quantity <= 0.5}
+                            onPress={() => {
+                              setQuantity(quantity - 0.5);
+                              void Haptics.selectionAsync();
+                            }}
+                          >
+                            <Minus size={18} color={palette.accent} />
+                          </Button>
+                          <Typography type="body" weight="semibold">
+                            {quantity}
+                          </Typography>
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="secondary"
+                            accessibilityLabel="More servings"
+                            isDisabled={quantity >= 20}
+                            onPress={() => {
+                              setQuantity(quantity + 0.5);
+                              void Haptics.selectionAsync();
+                            }}
+                          >
+                            <Plus size={18} color={palette.accent} />
+                          </Button>
+                        </View>
+                      </View>
+                    )}
                     <View className="items-center py-7">
                       <Typography type="h1" weight="bold" style={{ fontSize: 48, lineHeight: 48 }}>
-                        {Math.round(selected.calories * quantity)}
+                        {Math.round(selected.calories * (Number.isFinite(portion) ? portion : 0))}
                       </Typography>
                       <Typography type="body-sm" weight="normal" color="muted" className="mt-1">
                         kcal
@@ -338,7 +609,10 @@ export default function LogFood() {
                       {(['protein', 'carbs', 'fat'] as const).map((k) => (
                         <View className="flex-1 items-center" key={k}>
                           <Typography type="body" weight="semibold">
-                            {Math.round(selected[k] * quantity)}g
+                            {Math.round(
+                              selected[k] * (Number.isFinite(portion) ? portion : 0) * 10,
+                            ) / 10}
+                            g
                           </Typography>
                           <Typography type="body-xs" weight="normal" color="muted" className="mt-1">
                             {k === 'protein' ? 'Protein' : k === 'carbs' ? 'Carbs' : 'Fat'}
@@ -349,6 +623,11 @@ export default function LogFood() {
                   </Card>
                 ) : (
                   <Card className="gap-4 rounded-3xl p-5">
+                    {!!nutritionNotice && (
+                      <Typography type="body-sm" color="muted">
+                        {nutritionNotice}
+                      </Typography>
+                    )}
                     <TextField>
                       <Label>Food name</Label>
                       <Input

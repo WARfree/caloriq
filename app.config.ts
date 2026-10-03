@@ -40,7 +40,21 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     extra: {
       appStoreAppId: process.env.BILT_APP_STORE_APP_ID,
     },
-    plugins: ['expo-router', 'expo-font', ...nativePlugins],
+    plugins: [
+      'expo-router',
+      'expo-font',
+      'expo-splash-screen',
+      [
+        'expo-camera',
+        {
+          cameraPermission: 'Permite Nourish să scaneze codurile de bare ale alimentelor.',
+          microphonePermission: false,
+          recordAudioAndroid: false,
+          barcodeScannerEnabled: true,
+        },
+      ],
+      ...nativePlugins,
+    ],
     experiments: {
       typedRoutes: true,
       reactCompiler: true,
