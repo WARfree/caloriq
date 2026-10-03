@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Linking, View } from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused } from 'expo-router/react-navigation';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Button, Skeleton, Typography } from 'heroui-native';
 import { ScanBarcode } from 'lucide-react-native';
