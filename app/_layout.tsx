@@ -20,6 +20,7 @@ import { bilt } from '@/lib/bilt';
 import { useTracker } from '@/lib/tracker';
 import { resetActivities } from '@/lib/activities';
 import { resetSteps } from '@/lib/steps';
+import { resetMeasurements } from '@/lib/measurements';
 import { Uniwind } from 'uniwind';
 import {
   ErrorBoundary as ExpoErrorBoundary,
@@ -68,6 +69,7 @@ function AccountNavigation() {
         useTracker.setState({ ready: false, entries: [], goal: 2000, busy: false, error: null });
         resetActivities();
         resetSteps();
+        resetMeasurements();
       }
       useAccount.getState().setSession(nextSession);
     });
@@ -108,6 +110,8 @@ function AccountNavigation() {
         <Stack.Screen name="food-more-info" />
         <Stack.Screen name="log-activity" />
         <Stack.Screen name="log-steps" />
+        <Stack.Screen name="log-measurement" />
+        <Stack.Screen name="measurement/[type]" />
       </Stack.Protected>
     </Stack>
   );

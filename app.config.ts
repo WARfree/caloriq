@@ -44,6 +44,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-router',
       'expo-font',
       'expo-splash-screen',
+      '@react-native-community/datetimepicker',
       [
         'expo-camera',
         {

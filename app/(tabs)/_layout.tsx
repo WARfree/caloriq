@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ChartNoAxesColumn, Heart, SlidersHorizontal, Dumbbell } from 'lucide-react-native';
+import { ChartNoAxesColumn, Heart, SlidersHorizontal, Dumbbell, Ruler } from 'lucide-react-native';
 import { useActivities } from '@/lib/activities';
 import { useSteps } from '@/lib/steps';
+import { useMeasurements } from '@/lib/measurements';
 import * as Haptics from 'expo-haptics';
 import { palette, useTracker } from '@/lib/tracker';
 
@@ -11,11 +12,13 @@ export default function TabLayout() {
   const load = useTracker((s) => s.load);
   const loadActivities = useActivities((s) => s.load);
   const loadSteps = useSteps((s) => s.load);
+  const loadMeasurements = useMeasurements((s) => s.load);
   useEffect(() => {
     void load();
     void loadActivities();
     void loadSteps();
-  }, [load, loadActivities, loadSteps]);
+    void loadMeasurements();
+  }, [load, loadActivities, loadSteps, loadMeasurements]);
   return (
     <>
       {/* eslint-disable-next-line react/style-prop-object -- Expo StatusBar accepts a string style, not a React Native style object. */}
@@ -52,6 +55,10 @@ export default function TabLayout() {
             title: 'Activități',
             tabBarIcon: ({ color }) => <Dumbbell size={23} color={color} />,
           }}
+        />
+        <Tabs.Screen
+          name="measurements"
+          options={{ title: 'Corp', tabBarIcon: ({ color }) => <Ruler size={23} color={color} /> }}
         />
         <Tabs.Screen
           name="trends"
