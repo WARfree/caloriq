@@ -5,6 +5,7 @@ import type { Food, Nutrition } from '@/lib/tracker';
 
 export type CatalogFood = Food & {
   source?: 'open-food-facts';
+  productCode?: string;
   missingNutrition?: (keyof Nutrition)[];
 };
 const productSchema = z.object({
@@ -62,10 +63,15 @@ export function toCatalogFood(raw: unknown): CatalogFood | null {
     carbs: nutrition.carbs ?? 0,
     fat: nutrition.fat ?? 0,
     source: 'open-food-facts',
+    productCode: product.code,
     missingNutrition,
   };
 }
-export async function getOpenFoodFacts(action: 'search' | 'barcode', query: string, page = 1) {
+async function requestOpenFoodFacts(
+  action: 'search' | 'barcode' | 'details',
+  query: string,
+  page = 1,
+) {
   const { data, error } = await bilt.functions.invoke('open-food-facts', {
     body: { action, query, page },
   });
@@ -80,8 +86,24 @@ export async function getOpenFoodFacts(action: 'search' | 'barcode', query: stri
   const response = responseSchema.safeParse(data);
   if (!response.success)
     throw new Error('Răspunsul Open Food Facts nu poate fi citit. Încearcă din nou.');
-  const products = response.data.products
+  return response.data;
+}
+
+export type OpenFoodFactsProduct = Record<string, unknown>;
+
+export async function getOpenFoodFactsProduct(code: string): Promise<OpenFoodFactsProduct | null> {
+  const response = await requestOpenFoodFacts('details', code);
+  if (!response.products.length) return null;
+  const product = z.record(z.string(), z.unknown()).safeParse(response.products[0]);
+  if (!product.success)
+    throw new Error('Informațiile produsului nu pot fi citite. Încearcă din nou.');
+  return product.data;
+}
+
+export async function getOpenFoodFacts(action: 'search' | 'barcode', query: string, page = 1) {
+  const data = await requestOpenFoodFacts(action, query, page);
+  const products = data.products
     .map(toCatalogFood)
     .filter((food): food is CatalogFood => food !== null);
-  return { products, page: response.data.page, hasMore: response.data.hasMore };
+  return { products, page: data.page, hasMore: data.hasMore };
 }

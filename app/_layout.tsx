@@ -105,6 +105,7 @@ function AccountNavigation() {
       <Stack.Protected guard={!!session && !!profile}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="log-food" />
+        <Stack.Screen name="food-more-info" />
         <Stack.Screen name="log-activity" />
         <Stack.Screen name="log-steps" />
       </Stack.Protected>

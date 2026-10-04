@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, FlatList, KeyboardAvoidingView, Linking, Platform, ScrollView } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import {
   Button,
   Card,
@@ -41,6 +41,7 @@ import {
 } from '@/lib/tracker';
 
 const back = () => goBackOrReplace('/');
+const moreInfo = (code: string) => router.push({ pathname: '/food-more-info', params: { code } });
 
 export default function LogFood() {
   const params = useLocalSearchParams<{ date?: string; meal?: string; id?: string }>();
@@ -49,6 +50,7 @@ export default function LogFood() {
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState(!!existing);
   const [selected, setSelected] = useState<CatalogFood | null>(null);
+  const [infoCode, setInfoCode] = useState<string | null>(null);
   const [scanMode, setScanMode] = useState<'camera' | 'manual' | null>(null);
   const [barcode, setBarcode] = useState('');
   const [results, setResults] = useState<CatalogFood[]>([]);
@@ -105,6 +107,7 @@ export default function LogFood() {
     }
   }
   const choose = (food: CatalogFood) => {
+    setInfoCode(food.productCode ?? null);
     const incomplete = !!food.missingNutrition?.length;
     setSelected(incomplete ? null : food);
     setName(food.name);
@@ -191,6 +194,7 @@ export default function LogFood() {
     setScanMode(null);
     setNutritionNotice('');
     setSelected(null);
+    setInfoCode(null);
     setName(lastRequest?.action === 'barcode' ? '' : query);
     setServing('1 serving');
     setQuantity(1);
@@ -458,43 +462,58 @@ export default function LogFood() {
                   ) : null
                 }
                 renderItem={({ item }) => (
-                  <PressableFeedback
-                    className="mb-2 rounded-2xl"
-                    accessibilityRole="button"
-                    accessibilityLabel={`Add ${item.name}`}
-                    onPress={() => choose(item)}
-                  >
-                    <Card className="bg-surface flex-row items-center gap-3 rounded-2xl p-4">
-                      <View className="bg-peach h-10 w-10 shrink-0 items-center justify-center rounded-xl">
-                        <Utensils size={18} color={palette.accent} />
-                      </View>
-                      <View className="min-w-0 flex-1 shrink">
-                        <Typography type="body-sm" weight="semibold" numberOfLines={2}>
-                          {item.name}
-                        </Typography>
-                        <Typography
-                          type="body-xs"
-                          weight="normal"
-                          color="muted"
-                          className="mt-1"
-                          numberOfLines={1}
-                        >
-                          {item.source ? `${item.category} · ${item.serving}` : item.serving}
-                        </Typography>
-                        {!!item.missingNutrition?.length && (
-                          <Typography type="body-xs" color="muted">
-                            Valori incomplete
+                  <View className="bg-surface mb-2 rounded-2xl">
+                    <PressableFeedback
+                      className="rounded-2xl"
+                      accessibilityRole="button"
+                      accessibilityLabel={`Add ${item.name}`}
+                      onPress={() => choose(item)}
+                    >
+                      <Card className="bg-surface flex-row items-center gap-3 rounded-2xl p-4">
+                        <View className="bg-peach h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+                          <Utensils size={18} color={palette.accent} />
+                        </View>
+                        <View className="min-w-0 flex-1 shrink">
+                          <Typography type="body-sm" weight="semibold" numberOfLines={2}>
+                            {item.name}
                           </Typography>
-                        )}
+                          <Typography
+                            type="body-xs"
+                            weight="normal"
+                            color="muted"
+                            className="mt-1"
+                            numberOfLines={1}
+                          >
+                            {item.source ? `${item.category} · ${item.serving}` : item.serving}
+                          </Typography>
+                          {!!item.missingNutrition?.length && (
+                            <Typography type="body-xs" color="muted">
+                              Valori incomplete
+                            </Typography>
+                          )}
+                        </View>
+                        <Typography type="body-sm" weight="medium" className="shrink-0">
+                          {item.missingNutrition?.includes('calories')
+                            ? '—'
+                            : Math.round(item.calories)}
+                        </Typography>
+                        <ChevronRight size={16} color={palette.muted} />
+                      </Card>
+                    </PressableFeedback>
+                    {item.productCode && (
+                      <View className="px-4 pb-3">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="rounded-xl"
+                          onPress={() => moreInfo(item.productCode!)}
+                        >
+                          <Button.Label>More Info</Button.Label>
+                          <ChevronRight size={16} color={palette.accent} />
+                        </Button>
                       </View>
-                      <Typography type="body-sm" weight="medium" className="shrink-0">
-                        {item.missingNutrition?.includes('calories')
-                          ? '—'
-                          : Math.round(item.calories)}
-                      </Typography>
-                      <ChevronRight size={16} color={palette.muted} />
-                    </Card>
-                  </PressableFeedback>
+                    )}
+                  </View>
                 )}
               />
               <View className="border-border gap-1 border-t px-5 py-3">
@@ -532,6 +551,16 @@ export default function LogFood() {
                     </Button>
                   ))}
                 </View>
+                {infoCode && (
+                  <Button
+                    variant="secondary"
+                    className="mb-4 rounded-2xl"
+                    onPress={() => moreInfo(infoCode)}
+                  >
+                    <Button.Label>More Info</Button.Label>
+                    <ChevronRight size={17} color={palette.accent} />
+                  </Button>
+                )}
                 {selected ? (
                   <Card className="mb-5 rounded-3xl p-5">
                     <Typography.Heading type="h4" weight="bold">
