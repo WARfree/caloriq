@@ -78,10 +78,13 @@ export default function AuthScreen() {
         typeof failure === 'object' && failure !== null && 'code' in failure
           ? String(failure.code)
           : undefined;
-      showError(authErrorMessage(failureCode));
       if (failureCode === 'email_not_confirmed') {
         setMode('verify');
         setPassword('');
+        setCode('');
+        await resend();
+      } else {
+        showError(authErrorMessage(failure));
       }
     } finally {
       setBusy(false);
@@ -96,8 +99,8 @@ export default function AuthScreen() {
       if (failure) throw failure;
       setNotice('Am trimis un cod nou. Verifică și folderul Spam.');
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
-      showError('Codul nu a putut fi trimis. Așteaptă puțin și încearcă din nou.');
+    } catch (failure) {
+      showError(authErrorMessage(failure));
     } finally {
       setBusy(false);
     }

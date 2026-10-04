@@ -65,23 +65,29 @@ export const useAccount = create<AccountState>((set, get) => ({
   },
 }));
 
-export function authErrorMessage(code?: string) {
-  switch (code) {
-    case 'invalid_credentials':
-      return 'Emailul sau parola nu este corectă.';
-    case 'email_not_confirmed':
-      return 'Confirmă adresa de email înainte de autentificare.';
-    case 'user_already_exists':
-    case 'email_exists':
-      return 'Există deja un cont cu acest email. Autentifică-te.';
-    case 'otp_expired':
-      return 'Codul este incorect sau a expirat. Solicită un cod nou.';
-    case 'over_email_send_rate_limit':
-    case 'over_request_rate_limit':
-      return 'Prea multe încercări. Așteaptă puțin și încearcă din nou.';
-    case 'weak_password':
-      return 'Alege o parolă mai puternică, de cel puțin 8 caractere.';
-    default:
-      return 'Nu am putut finaliza acțiunea. Încearcă din nou.';
-  }
+export function authErrorMessage(failure: unknown) {
+  const code =
+    typeof failure === 'object' && failure !== null && 'code' in failure
+      ? String(failure.code)
+      : undefined;
+  const message =
+    typeof failure === 'object' &&
+    failure !== null &&
+    'message' in failure &&
+    typeof failure.message === 'string'
+      ? failure.message
+      : '';
+  const details = message ? ` ${message}` : '';
+  const messages: Record<string, string> = {
+    invalid_credentials: 'Emailul sau parola nu este corectă.',
+    email_not_confirmed: 'Confirmă adresa de email înainte de autentificare.',
+    user_already_exists: 'Există deja un cont cu acest email. Autentifică-te.',
+    email_exists: 'Există deja un cont cu acest email. Autentifică-te.',
+    otp_expired: 'Codul este incorect sau a expirat. Solicită un cod nou.',
+    over_email_send_rate_limit:
+      'S-a atins limita de emailuri. Așteaptă înainte să soliciți alt cod.',
+    over_request_rate_limit: 'Prea multe încercări. Așteaptă înainte să încerci din nou.',
+    weak_password: 'Alege o parolă mai puternică, de cel puțin 8 caractere.',
+  };
+  return `${messages[code ?? ''] ?? 'Nu am putut finaliza acțiunea. Încearcă din nou.'}${details}`;
 }
