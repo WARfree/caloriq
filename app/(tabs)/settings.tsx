@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { Heading, Screen, LoadState } from '@/components/TrackerUI';
 import { palette, useTracker } from '@/lib/tracker';
 import { useAccount } from '@/lib/account';
+import { resetSteps } from '@/lib/steps';
 import { bilt } from '@/lib/bilt';
 import { goalLabels, calculateCalories } from '@/lib/calorie-profile';
 
@@ -25,6 +26,7 @@ export default function Settings() {
       const { error: failure } = await bilt.auth.signOut();
       if (failure) throw failure;
       useTracker.setState({ entries: [], goal: 2000, ready: false, busy: false, error: null });
+      resetSteps();
       useAccount.getState().setSession(null);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {

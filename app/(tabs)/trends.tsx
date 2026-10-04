@@ -5,6 +5,7 @@ import { Button, Card, Typography } from 'heroui-native';
 import { ChevronLeft, ChevronRight, ChartNoAxesColumn } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { Screen, Heading, LoadState, Empty } from '@/components/TrackerUI';
+import { StepsTrend } from '@/components/StepsTrend';
 import { dateKey, offsetDate, totals, useTracker, palette } from '@/lib/tracker';
 
 export default function Trends() {
@@ -56,6 +57,7 @@ export default function Trends() {
           <ChevronRight size={20} color={palette.muted} />
         </Button>
       </View>
+      <StepsTrend start={start} />
       {!ready ? (
         <LoadState />
       ) : (

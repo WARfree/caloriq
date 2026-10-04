@@ -15,6 +15,7 @@ import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { SafeAreaView } from '@/components/ui/primitives/SafeAreaView';
 import { Heading } from '@/components/TrackerUI';
+import { StepsSummary } from '@/components/StepsSummary';
 import { activityTypes, useActivities } from '@/lib/activities';
 import { dateKey, fromKey, offsetDate, palette } from '@/lib/tracker';
 
@@ -90,6 +91,7 @@ export default function Activities() {
                 <ChevronRight size={20} color={palette.muted} />
               </Button>
             </View>
+            <StepsSummary date={selected} />
             {!ready ? (
               error ? (
                 <View className="items-center gap-4 py-8">

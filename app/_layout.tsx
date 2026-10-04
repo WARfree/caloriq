@@ -19,6 +19,7 @@ import { useAccount } from '@/lib/account';
 import { bilt } from '@/lib/bilt';
 import { useTracker } from '@/lib/tracker';
 import { resetActivities } from '@/lib/activities';
+import { resetSteps } from '@/lib/steps';
 import { Uniwind } from 'uniwind';
 import {
   ErrorBoundary as ExpoErrorBoundary,
@@ -66,6 +67,7 @@ function AccountNavigation() {
       if (useAccount.getState().session?.user.id !== nextSession?.user.id) {
         useTracker.setState({ ready: false, entries: [], goal: 2000, busy: false, error: null });
         resetActivities();
+        resetSteps();
       }
       useAccount.getState().setSession(nextSession);
     });
@@ -104,6 +106,7 @@ function AccountNavigation() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="log-food" />
         <Stack.Screen name="log-activity" />
+        <Stack.Screen name="log-steps" />
       </Stack.Protected>
     </Stack>
   );
