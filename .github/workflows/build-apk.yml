@@ -21,22 +21,19 @@ jobs:
       uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
-        java-version: '21'
+        java-version: '17'
 
-    - name: 4. Instaleaza dependentele (fara oprire pe avertismente)
+    - name: 4. Instaleaza dependentele
       run: npm install --legacy-peer-deps --force
 
-    - name: 5. Ruleaza Build Web (ignora erorile de linting)
+    - name: 5. Ruleaza Build Web
       run: npm run build || true
       env:
         CI: false
 
-    - name: 6. Pregateste Capacitor pentru Android
+    - name: 6. Sincronizeaza cu Android (fara adaugare duplicata)
       run: |
-        npm install @capacitor/core @capacitor/cli @capacitor/android --legacy-peer-deps --force
-        npx cap init Caloriq com.warfree.caloriq --web-dir dist || true
-        npx cap add android || true
-        npx cap copy android || true
+        npx cap sync android || true
 
     - name: 7. Compileaza fisierul APK
       run: |
