@@ -1,24 +1,51 @@
-name: Build Web App
+name: Build Android APK
 
 on:
   push:
     branches: [ main, master ]
 
 jobs:
-  build:
+  build-apk:
     runs-on: ubuntu-latest
 
     steps:
-    - name: 1. Descarcă codul sursă
+    - name: 1. Descarca codul sursa
       uses: actions/checkout@v4
 
-    - name: 2. Configurează Node.js
+    - name: 2. Configureaza Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
 
-    - name: 3. Instalează dependențele și construiește proiectul
+    - name: 3. Configureaza Java (pentru compilare Android)
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: 4. Instaleaza dependentele web
+      run: npm install --legacy-peer-deps
+
+    - name: 5. Ruleaza Build-ul Web
+      run: npm run build
+      env:
+        CI: false
+
+    - name: 6. Adauga Capacitor si genereaza proiectul Android
       run: |
-        npm install
-        npm run "build: android": "react- native run-android"
+        npm install @capacitor/core @capacitor/cli @capacitor/android --legacy-peer-deps
+        npx cap init Caloriq com.warfree.caloriq --web-dir dist
+        npx cap add android
+        npx cap copy android
 
+    - name: 7. Compileaza fisierul APK
+      run: |
+        cd android
+        chmod +x gradlew
+        ./gradlew assembleDebug
+
+    - name: 8. Salveaza fisierul APK ca Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: caloriq-app-debug
+        path: android/app/build/outputs/apk/debug/app-debug.apk
