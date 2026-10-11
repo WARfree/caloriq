@@ -33,6 +33,7 @@ jobs:
 
     - name: 6. Sincronizeaza cu Android (fara adaugare duplicata)
       run: |
+        npx cap add android
         npx cap sync android || true
 
     - name: 7. Compileaza fisierul APK
