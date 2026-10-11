@@ -1,1 +1,24 @@
+name: Build Web App
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 1. Descarcă codul sursă
+      uses: actions/checkout@v4
+
+    - name: 2. Configurează Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: 3. Instalează dependențele și construiește proiectul
+      run: |
+        npm install
+        npm run build
 
