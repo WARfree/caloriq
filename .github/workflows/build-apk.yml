@@ -20,5 +20,5 @@ jobs:
     - name: 3. Instalează dependențele și construiește proiectul
       run: |
         npm install
-        npm run build
+        npm run android
 
