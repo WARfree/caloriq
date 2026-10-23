@@ -15,30 +15,88 @@ import {
 import { ArrowLeft, Footprints } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from '@/components/ui/primitives/SafeAreaView';
-import { stepCountSchema, useSteps } from '@/lib/steps';
+import { StepsCalorieInfo } from '@/components/StepsCalorieInfo';
+import { stepCountSchema, stepCaloriesSchema, stepDurationSchema, useSteps } from '@/lib/steps';
+import { estimateStepEnergy } from '@/lib/step-energy';
+import { useAccount } from '@/lib/account';
 import { goBackOrReplace } from '@/lib/navigation';
 import { dateKey, fromKey, palette } from '@/lib/tracker';
+
+type Draft = { date: string; count: string; calories: string; duration: string };
+type Validation = Partial<Record<'count' | 'calories' | 'duration' | 'profile', string>>;
+const isDecimal = (value: string) => /^\d+(?:[.,]\d+)?$/.test(value.trim());
+const decimal = (value: string) => Number(value.trim().replace(',', '.'));
 
 export default function LogSteps() {
   const { date: requestedDate } = useLocalSearchParams<{ date?: string }>();
   const date = requestedDate || dateKey();
   const { entries, ready, busy, error, load, save } = useSteps();
+  const profile = useAccount((state) => state.profile);
   const existing = entries.find((entry) => entry.date === date);
-  const [draft, setDraft] = useState<{ date: string; count: string } | null>(null);
-  const count = draft?.date === date ? draft.count : existing ? String(existing.count) : '';
-  const [validation, setValidation] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const values: Draft =
+    draft?.date === date
+      ? draft
+      : {
+          date,
+          count: existing ? String(existing.count) : '',
+          calories:
+            existing?.calories !== undefined && existing.calorieSource !== 'estimated'
+              ? String(existing.calories)
+              : '',
+          duration: existing?.duration !== undefined ? String(existing.duration) : '',
+        };
+  const [validation, setValidation] = useState<Validation>({});
+  const countResult = stepCountSchema.safeParse(Number(values.count));
+  const validCount = /^\d+$/.test(values.count.trim()) && countResult.success;
+  const estimate = validCount && profile ? estimateStepEnergy(Number(values.count), profile) : null;
+  const manualCalories =
+    isDecimal(values.calories) && stepCaloriesSchema.safeParse(decimal(values.calories)).success;
+  const hasManualCalories = values.calories.trim() !== '';
+  const displayedCalories = hasManualCalories
+    ? manualCalories
+      ? Math.round(decimal(values.calories))
+      : null
+    : (estimate?.calories ?? null);
+  const validDuration =
+    isDecimal(values.duration) && stepDurationSchema.safeParse(decimal(values.duration)).success;
+  const pace =
+    validCount && validDuration
+      ? Math.round(Number(values.count) / decimal(values.duration))
+      : null;
+  const update = (field: 'count' | 'calories' | 'duration', value: string) => {
+    setDraft({ ...values, [field]: value });
+    setValidation({});
+  };
   useEffect(() => {
     if (!useSteps.getState().ready) void load();
   }, [load]);
   const submit = async () => {
-    const parsed = stepCountSchema.safeParse(Number(count));
-    if (!/^\d+$/.test(count.trim()) || !parsed.success) {
-      setValidation('Introdu un număr întreg între 0 și 200.000 de pași.');
+    const errors: Validation = {};
+    if (!validCount) errors.count = 'Introdu un număr întreg între 0 și 200.000 de pași.';
+    if (hasManualCalories && !manualCalories)
+      errors.calories = 'Introdu o valoare între 0 și 50.000 kcal sau lasă câmpul gol.';
+    if (values.duration.trim() !== '' && !validDuration)
+      errors.duration = 'Introdu o durată mai mare de 0 și de cel mult 1.440 minute.';
+    if (!hasManualCalories && !profile)
+      errors.profile =
+        'Completează greutatea și înălțimea în profil pentru estimare sau introdu caloriile.';
+    setValidation(errors);
+    if (Object.keys(errors).length > 0) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
-    setValidation(null);
-    if (await save({ date, count: parsed.data })) goBackOrReplace('/activities');
+    const calories = hasManualCalories ? decimal(values.calories) : estimate?.calories;
+    if (
+      await save({
+        date,
+        count: Number(values.count),
+        calories,
+        calorieSource: hasManualCalories ? 'manual' : 'estimated',
+        ...(validDuration ? { duration: decimal(values.duration) } : {}),
+      })
+    )
+      goBackOrReplace('/activities');
   };
   return (
     <SafeAreaView edges={['top', 'bottom']} className="bg-background flex-1">
@@ -50,7 +108,7 @@ export default function LogSteps() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ padding: 20, maxWidth: 600, width: '100%', alignSelf: 'center' }}
         >
-          <View className="mb-5 flex-row items-center gap-3">
+          <View className="mb-5 flex-row items-center gap-2">
             <Button
               isIconOnly
               size="sm"
@@ -64,6 +122,7 @@ export default function LogSteps() {
             <Typography type="h3" weight="bold" className="flex-1">
               {existing ? 'Editează pașii' : 'Adaugă pași'}
             </Typography>
+            <StepsCalorieInfo />
           </View>
           <Typography type="body-sm" weight="normal" color="muted" className="mb-5">
             {fromKey(date).toLocaleDateString('ro-RO', {
@@ -83,33 +142,74 @@ export default function LogSteps() {
                 </Button>
               </View>
             ) : (
-              <Skeleton className="h-48 rounded-3xl" />
+              <Skeleton className="h-80 rounded-3xl" />
             )
           ) : (
-            <Card className="bg-surface gap-4 rounded-3xl p-5">
-              <View className="bg-peach h-12 w-12 items-center justify-center rounded-2xl">
-                <Footprints size={24} color={palette.accent} />
-              </View>
-              <TextField isInvalid={!!validation} isDisabled={busy}>
+            <Card className="bg-surface gap-5 rounded-3xl p-5">
+              <Footprints size={24} color={palette.accent} />
+              <TextField isInvalid={!!validation.count} isDisabled={busy}>
                 <Label>Total pași în această zi</Label>
                 <Input
                   keyboardType="number-pad"
-                  value={count}
+                  value={values.count}
                   placeholder="Ex. 8000"
                   accessibilityLabel="Total pași în această zi"
-                  onChangeText={(value) => {
-                    setDraft({ date, count: value });
-                    setValidation(null);
-                  }}
+                  onChangeText={(value) => update('count', value)}
                 />
                 <Description>
                   Introdu totalul zilei. Salvarea înlocuiește valoarea anterioară.
                 </Description>
-                {validation && <FieldError>{validation}</FieldError>}
+                {validation.count && <FieldError>{validation.count}</FieldError>}
               </TextField>
-              {error && (
+              <TextField isInvalid={!!validation.duration} isDisabled={busy}>
+                <Label>Durata activității (minute)</Label>
+                <Input
+                  keyboardType="decimal-pad"
+                  value={values.duration}
+                  placeholder="Opțional, ex. 60"
+                  accessibilityLabel="Durata activității în minute, opțional"
+                  onChangeText={(value) => update('duration', value)}
+                />
+                {validation.duration && <FieldError>{validation.duration}</FieldError>}
+              </TextField>
+              <TextField isInvalid={!!validation.calories} isDisabled={busy}>
+                <Label>Calorii active arse (kcal)</Label>
+                <Input
+                  keyboardType="decimal-pad"
+                  value={values.calories}
+                  placeholder="Opțional"
+                  accessibilityLabel="Calorii active arse, opțional"
+                  onChangeText={(value) => update('calories', value)}
+                />
+                <Description>Lasă gol pentru estimare automată.</Description>
+                {validation.calories && <FieldError>{validation.calories}</FieldError>}
+              </TextField>
+              {displayedCalories !== null && (
+                <View
+                  className="border-border gap-1 border-t pt-4"
+                  accessibilityLiveRegion="polite"
+                >
+                  <Typography type="body" weight="semibold">
+                    {displayedCalories.toLocaleString('ro-RO')} kcal{' '}
+                    {hasManualCalories ? 'introduse' : 'estimate'}
+                  </Typography>
+                  {estimate && (
+                    <Typography type="body-sm" weight="normal" color="muted">
+                      ≈ {estimate.distanceKm.toLocaleString('ro-RO', { maximumFractionDigits: 2 })}{' '}
+                      km de mers
+                    </Typography>
+                  )}
+                  {pace !== null && (
+                    <Typography type="body-sm" weight="normal" color="muted">
+                      Ritm mediu: {pace.toLocaleString('ro-RO')}{' '}
+                      {pace === 1 ? 'pas/minut' : 'pași/minut'}
+                    </Typography>
+                  )}
+                </View>
+              )}
+              {(validation.profile || error) && (
                 <Typography type="body-sm" weight="normal" className="text-danger">
-                  {error} Apasă din nou pe Salvează.
+                  {validation.profile || error}
                 </Typography>
               )}
             </Card>

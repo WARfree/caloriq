@@ -4,19 +4,25 @@ import { Button, Card, Skeleton, Typography } from 'heroui-native';
 import { Footprints } from 'lucide-react-native';
 import { useSteps } from '@/lib/steps';
 import { palette } from '@/lib/tracker';
+import { useAccount } from '@/lib/account';
+import { stepCalories } from '@/lib/step-energy';
+import { StepsCalorieInfo } from '@/components/StepsCalorieInfo';
 
 export function StepsSummary({ date }: { date: string }) {
   const { entries, ready, error, load } = useSteps();
   const entry = entries.find((item) => item.date === date);
+  const profile = useAccount((state) => state.profile);
+  const calories = entry ? stepCalories(entry, profile) : null;
   return (
     <Card className="bg-surface mb-5 gap-4 rounded-[28px] p-5">
       <View className="flex-row items-center gap-2">
         <View className="bg-peach h-9 w-9 items-center justify-center rounded-xl">
           <Footprints size={20} color={palette.accent} />
         </View>
-        <Typography type="body" weight="semibold">
+        <Typography type="body" weight="semibold" className="flex-1">
           Pașii zilei
         </Typography>
+        <StepsCalorieInfo />
       </View>
       {!ready ? (
         error ? (
@@ -44,6 +50,22 @@ export function StepsSummary({ date }: { date: string }) {
             <Typography type="body-sm" weight="normal" color="muted">
               Niciun pas înregistrat în această zi.
             </Typography>
+          )}
+          {entry && (
+            <View className="gap-1">
+              {calories !== null && (
+                <Typography type="body-sm" weight="normal" color="muted">
+                  {calories.toLocaleString('ro-RO')} kcal{' '}
+                  {entry.calorieSource === 'manual' ? 'introduse' : 'estimate'}
+                </Typography>
+              )}
+              {entry.duration !== undefined && (
+                <Typography type="body-sm" weight="normal" color="muted">
+                  {entry.duration.toLocaleString('ro-RO')}{' '}
+                  {entry.duration === 1 ? 'minut de activitate' : 'minute de activitate'}
+                </Typography>
+              )}
+            </View>
           )}
           <Button
             variant="secondary"

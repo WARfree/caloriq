@@ -5,7 +5,15 @@ import { z } from 'zod';
 import { useAccount } from '@/lib/account';
 
 export const stepCountSchema = z.number().int().min(0).max(200000);
-const entrySchema = z.object({ date: z.string(), count: stepCountSchema });
+export const stepCaloriesSchema = z.number().min(0).max(50000);
+export const stepDurationSchema = z.number().positive().max(1440);
+const entrySchema = z.object({
+  date: z.string(),
+  count: stepCountSchema,
+  calories: stepCaloriesSchema.optional(),
+  duration: stepDurationSchema.optional(),
+  calorieSource: z.enum(['manual', 'estimated']).optional(),
+});
 export type StepEntry = z.infer<typeof entrySchema>;
 type StepsStore = {
   entries: StepEntry[];
@@ -37,7 +45,7 @@ export const useSteps = create<StepsStore>((set, get) => ({
     const userId = useAccount.getState().session?.user.id;
     if (!userId || !get().ready || get().busy) return false;
     if (!entrySchema.safeParse(entry).success) {
-      set({ error: 'Introdu un număr întreg între 0 și 200.000 de pași.' });
+      set({ error: 'Verifică pașii, caloriile și durata introduse.' });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return false;
     }
