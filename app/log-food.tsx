@@ -424,7 +424,7 @@ export default function LogFood() {
                         </Button>
                       )}
                     </View>
-                  ) : null
+                  ) : undefined
                 }
                 ListEmptyComponent={
                   searching ? (
@@ -433,7 +433,7 @@ export default function LogFood() {
                         <Skeleton key={key} className="h-20 rounded-2xl" />
                       ))}
                     </View>
-                  ) : searchError ? null : (
+                  ) : searchError ? undefined : (
                     <Empty
                       text={
                         lastRequest?.action === 'barcode'
@@ -459,7 +459,7 @@ export default function LogFood() {
                         {searching ? 'Se încarcă…' : 'Mai multe rezultate'}
                       </Button.Label>
                     </Button>
-                  ) : null
+                  ) : undefined
                 }
                 renderItem={({ item }) => (
                   <View className="bg-surface mb-2 rounded-2xl">

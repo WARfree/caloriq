@@ -189,7 +189,7 @@ export default function Activities() {
                 <Button.Label>Înregistrează prima activitate</Button.Label>
               </Button>
             </Card>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => (
           <Animated.View

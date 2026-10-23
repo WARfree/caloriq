@@ -105,7 +105,7 @@ export default function FoodMoreInfo() {
                   </Typography>
                 </View>
               </View>
-            ) : null
+            ) : undefined
           }
           ListEmptyComponent={
             loading ? (
@@ -140,7 +140,7 @@ export default function FoodMoreInfo() {
               <Typography type="body-xs" color="muted" align="center" className="mt-6">
                 Open Food Facts · ODbL · Imagini CC BY-SA
               </Typography>
-            ) : null
+            ) : undefined
           }
         />
       </View>

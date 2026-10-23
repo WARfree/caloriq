@@ -190,7 +190,7 @@ export default function MeasurementDetail() {
                 </Button.Label>
               </Button>
             </View>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => (
           <Animated.View
